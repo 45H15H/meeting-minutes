@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.markdown("## :gray[Turn Audio into Text or Text into Audio]")
+st.markdown("## :gray[Meeting Minutes Generator]")
 
 with st.form(key='api_form'):
     st.markdown("""
@@ -19,18 +19,19 @@ with st.form(key='api_form'):
     st.form_submit_button("SUBMIT")
 
 if not (api_key.startswith('sk-') and len(api_key) == 51):
-        st.warning('Please enter your credentials!', icon = '⚠️')
+    st.warning('Please enter your credentials!', icon = '⚠️')
 else:
-    st.success("The operation was successful!", icon = '✅')
+    st.success("Proceed to use the app!", icon = '✅')
 
 transcribe, generate, minutes = st.tabs([":blue[Transcribe]", ":blue[Generate]", "Meeting Minutes"], )
 
-@st.cache_data
-def transcribe_audio(audio_file):
+# @st.cache_data
+def transcribe_audio(audio_file, language):
     openai.api_key = api_key
     transcription = openai.audio.transcriptions.create(
             model = "whisper-1", 
-            file = audio_file
+            file = audio_file,
+            language=language
         )
     return transcription.text
 
@@ -39,13 +40,26 @@ r = ""
 with transcribe:
     st.subheader("Transcribes audio into the input language")
 
-    uploaded_audio = st.file_uploader("Choose a audio file", key='audio_input', disabled=not api_key)
-    if uploaded_audio is not None:
-        t_button = st.button("Transcribe", type="primary", disabled=not api_key)
+    uploaded_audio = st.file_uploader("Choose a audio file", key='audio_input', disabled=not api_key, type=['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'])
+    st.text("Select language")
+    col1, col2 = st.columns(2)
+    with col1:
+        language = st.selectbox("Select language", ("English", "Spanish", "French", "German", "Italian", "Portuguese"), index=0, disabled=not uploaded_audio, placeholder="The language to transcribe the audio into", label_visibility='collapsed')
+    with col2:
+        t_button = st.button("Transcribe", type="primary", disabled=not uploaded_audio)
     st.divider()
+    # language in ISO-639-1 format to improve the accuracy and latency of the transcription
+    language_dict = {
+        "English": "en",
+        "Spanish": "es",
+        "French": "fr",
+        "German": "de",
+        "Italian": "it",
+        "Portuguese": "pt"
+    }
     if uploaded_audio and t_button:
         progress_bar = st.progress(0, "Operation in progress. Please wait...")
-        result = transcribe_audio(uploaded_audio)
+        result = transcribe_audio(uploaded_audio, language_dict[language])
         r = result
         progress_bar.progress(100)
         st.text_area(label="", value=result, label_visibility='collapsed', key="t_1")
@@ -208,25 +222,25 @@ m = {}
 with minutes:
     st.subheader("Generate meeting minutes")
     uploaded_audio = st.file_uploader("Choose a audio file", key='audio_input_2', disabled=not api_key)
-    if uploaded_audio is not None:
-        st.text("Analyze")
-        col1, col2 = st.columns(2)
-        with col1:
-            options = st.multiselect(
-                'Analyze',
-                ['Key points', 'Action items', 'Sentiment'],
-                default=None,
-                max_selections=2,
-                disabled=not api_key,
-                label_visibility='collapsed',
-                placeholder='Optional analysis'
-            )
-        with col2:
-            t_button = st.button("Generate", type="primary", disabled=not api_key)
+    st.text("Analyze")
+    col1, col2 = st.columns(2)
+    with col1:
+        options = st.multiselect(
+            'Analyze',
+            ['Key points', 'Action items', 'Sentiment'],
+            default=None,
+            max_selections=2,
+            disabled=not uploaded_audio,
+            label_visibility='collapsed',
+            placeholder='Optional analysis',
+        )
+    with col2:
+        g_button = st.button("Generate", type="primary", disabled=not uploaded_audio, key='g_2')
     st.divider()
     if uploaded_audio and t_button:
         with st.spinner("Operation in progress. Please wait..."):
-            result = transcribe_audio(uploaded_audio)
+            # Transcribe in English
+            result = transcribe_audio(uploaded_audio, 'en')
             m_result = meeting_minutes(result, options)
             m = m_result
             st.text('Abstract summary')
