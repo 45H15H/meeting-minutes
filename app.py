@@ -76,7 +76,7 @@ with generate:
         with col1:
             voice = st.selectbox("Select voice", ("alloy", "echo", "fable", "onyx", "nova", "shimmer"), index=4, disabled=not txt, help="The voice to use when generating the audio.")
         with col2:
-            speed = st.slider("Specify speed", min_value=0.25, max_value=4.0, value=1.0, disabled=not txt, step=0.25, help = "The speed of the generated audio.", )
+            speed = st.slider("Specify speed", min_value=0.25, max_value=4.0, value=1.0, disabled=not txt, step=0.05, help = "The speed of the generated audio.", )
         g_button = st.button("Generate", type="primary", disabled=not txt)
     st.divider()
     if txt is not None and g_button:
@@ -89,4 +89,139 @@ with generate:
         st.download_button("Download audio", data = audio_file_path, mime="audio/mp3", file_name="speech.mp3")
 
 
+# Summary extraction
+def abstract_summary_extraction(transcription):
+    openai.api_key = api_key
+    response = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a highly skilled AI trained in language comprehension and summarization. I would like you to read the following text and summarize it into a concise abstract paragraph. Aim to retain the most important points, providing a coherent and readable summary that could help a person understand the main points of the discussion without needing to read the entire text. Please avoid unnecessary details or tangential points."
+            },
+            {
+                "role": "user",
+                "content": transcription
+            }
+        ]
+    )
+    return response.choices[0].message.content
 
+# Key points extraction
+def key_points_extraction(transcription):
+    openai.api_key = api_key
+    response = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a proficient AI with a specialty in distilling information into key points. Based on the following text, identify and list the main points that were discussed or brought up. These should be the most important ideas, findings, or topics that are crucial to the essence of the discussion. Your goal is to provide a list that someone could read to quickly understand what was talked about."
+            },
+            {
+                "role": "user",
+                "content": transcription
+            }
+        ]
+    )
+    return response.choices[0].message.content
+
+
+# Action item extraction
+def action_item_extraction(transcription):
+    openai.api_key = api_key
+    response = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are an AI expert in analyzing conversations and extracting action items. Please review the text and identify any tasks, assignments, or actions that were agreed upon or mentioned as needing to be done. These could be tasks assigned to specific individuals, or general actions that the group has decided to take. Please list these action items clearly and concisely."
+            },
+            {
+                "role": "user",
+                "content": transcription
+            }
+        ]
+    )
+    return response.choices[0].message.content
+
+# Sentiment analysis
+def sentiment_analysis(transcription):
+    openai.api_key = api_key
+    response = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": "As an AI with expertise in language and emotion analysis, your task is to analyze the sentiment of the following text. Please consider the overall tone of the discussion, the emotion conveyed by the language used, and the context in which words and phrases are used. Indicate whether the sentiment is generally positive, negative, or neutral, and provide brief explanations for your analysis where possible."
+            },
+            {
+                "role": "user",
+                "content": transcription
+            }
+        ]
+    )
+    return response.choices[0].message.content
+
+def meeting_minutes(transcription):
+    abstract_summary = abstract_summary_extraction(transcription)
+    key_points = key_points_extraction(transcription)
+    # action_items = action_item_extraction(transcription)
+    sentiment = sentiment_analysis(transcription)
+    return {
+        'abstract_summary': abstract_summary,
+        'key_points': key_points,
+        # 'action_items': action_items
+        'sentiment': sentiment
+    }
+
+# Exporting meeting minutes
+def save_as_docx(minutes, filename):
+    doc = Document()
+    for key, value in minutes.items():
+        # Replace underscores with spaces and capitalize each word for the heading
+        heading = ' '.join(word.capitalize() for word in key.split('_'))
+        doc.add_heading(heading, level=1)
+        doc.add_paragraph(value)
+        # Add a line break between sections
+        doc.add_paragraph()
+    doc.save(filename)
+
+
+global m
+m = ""
+with minutes:
+    st.subheader("Generate meeting minutes")
+    uploaded_audio = st.file_uploader("Choose a audio file", key='audio_input_2', disabled=not api_key)
+    if uploaded_audio is not None:
+        st.text("Analyze")
+        col1, col2 = st.columns(2)
+        with col1:
+            options = st.multiselect(
+                'Analyze',
+                ['Key points', 'Action items', 'Sentiment'],
+                default=None,
+                max_selections=2,
+                disabled=not api_key,
+                label_visibility='collapsed'
+            )
+        with col2:
+            t_button = st.button("Transcribe", type="primary", disabled=not api_key)
+    st.divider()
+    if uploaded_audio and t_button:
+        with st.spinner("Operation in progress. Please wait..."):
+            result = transcribe_audio(uploaded_audio)
+            m_result = meeting_minutes(result)
+            st.text('Abstract summary')
+            st.text_area(label="", value=m_result['abstract_summary'], label_visibility='collapsed')
+            st.text('Key points')
+            st.text_area(label="", value=m_result['key_points'], label_visibility='collapsed')
+            # st.text('Action items')
+            st.text('Sentiment')
+            st.text_area(label="", value=m_result['sentiment'], label_visibility='collapsed')
+
+    if m:
+        st.download_button("Download text", data = result, mime = 'text/plain', file_name="transcript.txt")
