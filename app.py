@@ -1,5 +1,6 @@
 import streamlit as st
 import openai
+from docx import Document
 
 st.set_page_config(
     page_title="Ex-stream-ly Cool App",
@@ -90,6 +91,7 @@ with generate:
 
 
 # Summary extraction
+@st.cache_data
 def abstract_summary_extraction(transcription):
     openai.api_key = api_key
     response = openai.chat.completions.create(
@@ -109,6 +111,7 @@ def abstract_summary_extraction(transcription):
     return response.choices[0].message.content
 
 # Key points extraction
+@st.cache_data
 def key_points_extraction(transcription):
     openai.api_key = api_key
     response = openai.chat.completions.create(
@@ -129,6 +132,7 @@ def key_points_extraction(transcription):
 
 
 # Action item extraction
+@st.cache_data
 def action_item_extraction(transcription):
     openai.api_key = api_key
     response = openai.chat.completions.create(
@@ -148,6 +152,7 @@ def action_item_extraction(transcription):
     return response.choices[0].message.content
 
 # Sentiment analysis
+@st.cache_data
 def sentiment_analysis(transcription):
     openai.api_key = api_key
     response = openai.chat.completions.create(
@@ -166,17 +171,24 @@ def sentiment_analysis(transcription):
     )
     return response.choices[0].message.content
 
-def meeting_minutes(transcription):
-    abstract_summary = abstract_summary_extraction(transcription)
-    key_points = key_points_extraction(transcription)
-    # action_items = action_item_extraction(transcription)
-    sentiment = sentiment_analysis(transcription)
-    return {
-        'abstract_summary': abstract_summary,
-        'key_points': key_points,
-        # 'action_items': action_items
-        'sentiment': sentiment
+@st.cache_data
+def meeting_minutes(transcription, options):
+    minutes = {
+        'abstract_summary': None,
+        'key_points': None,
+        'action_items': None,
+        'sentiment': None
     }
+    minutes['abstract_summary'] = abstract_summary_extraction(transcription)
+    if 'Key points' in options:
+        minutes['key_points'] = key_points_extraction(transcription)
+    if 'Action items' in options:
+        minutes['action_items'] = action_item_extraction(transcription)
+    if 'Sentiment' in options:
+        minutes['sentiment'] = sentiment_analysis(transcription)
+    
+    return minutes
+    
 
 # Exporting meeting minutes
 def save_as_docx(minutes, filename):
@@ -192,7 +204,7 @@ def save_as_docx(minutes, filename):
 
 
 global m
-m = ""
+m = {}
 with minutes:
     st.subheader("Generate meeting minutes")
     uploaded_audio = st.file_uploader("Choose a audio file", key='audio_input_2', disabled=not api_key)
@@ -206,22 +218,30 @@ with minutes:
                 default=None,
                 max_selections=2,
                 disabled=not api_key,
-                label_visibility='collapsed'
+                label_visibility='collapsed',
+                placeholder='Optional analysis'
             )
         with col2:
-            t_button = st.button("Transcribe", type="primary", disabled=not api_key)
+            t_button = st.button("Generate", type="primary", disabled=not api_key)
     st.divider()
     if uploaded_audio and t_button:
         with st.spinner("Operation in progress. Please wait..."):
             result = transcribe_audio(uploaded_audio)
-            m_result = meeting_minutes(result)
+            m_result = meeting_minutes(result, options)
+            m = m_result
             st.text('Abstract summary')
             st.text_area(label="", value=m_result['abstract_summary'], label_visibility='collapsed')
-            st.text('Key points')
-            st.text_area(label="", value=m_result['key_points'], label_visibility='collapsed')
-            # st.text('Action items')
-            st.text('Sentiment')
-            st.text_area(label="", value=m_result['sentiment'], label_visibility='collapsed')
+            if 'Key points' in options:
+                st.text('Key points')
+                st.text_area(label="", value=m_result['key_points'], label_visibility='collapsed')
+            if 'Action items' in options:
+                st.text('Action items')
+                st.text_area(label="", value=m_result['action_items'], label_visibility='collapsed')
+            if 'Sentiment' in options:
+                st.text('Sentiment')
+                st.text_area(label="", value=m_result['sentiment'], label_visibility='collapsed')
 
     if m:
-        st.download_button("Download text", data = result, mime = 'text/plain', file_name="transcript.txt")
+        save_as_docx(m, 'meeting_minutes.docx')
+        with open('meeting_minutes.docx', 'rb') as f:
+            st.download_button("Download Meeting Minutes", data=f.read(), mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document', file_name='meeting_minutes.docx')
