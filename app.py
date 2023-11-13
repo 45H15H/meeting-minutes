@@ -1,7 +1,9 @@
+# import required libraries
 import streamlit as st
 import openai
 from docx import Document
 
+# Set page configuration
 st.set_page_config(
     page_title="Meeting Minutes Generator",
     page_icon="📝",
@@ -9,8 +11,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Title
 st.markdown("## :gray[Meeting Minutes Generator]")
 
+# Form to enter API key
 with st.form(key='api_form'):
     st.markdown("""
     Enter your OpenAI API token :red[*]
@@ -23,10 +27,26 @@ if not (api_key.startswith('sk-') and len(api_key) == 51):
 else:
     st.success("Proceed to use the app!", icon = '✅')
 
+# Tabs
 transcribe, generate, minutes = st.tabs([":blue[Transcribe]", ":blue[Generate]", "Meeting Minutes"], )
 
 @st.cache_data(show_spinner=False)
 def transcribe_audio(audio_file, language):
+    """
+    Function to transcribe audio into the input language
+
+    Parameters
+    ----------
+    audio_file : file
+        The audio file to transcribe
+    language : str
+        The language to transcribe the audio into
+
+    Returns
+    -------
+    str
+        The transcribed text
+    """
     openai.api_key = api_key
     transcription = openai.audio.transcriptions.create(
             model = "whisper-1", 
@@ -71,6 +91,23 @@ with transcribe:
 
 @st.cache_data(show_spinner=False)
 def generate_audio(txt, voice, speed):
+    """
+    Function to generate audio from the input text
+
+    Parameters
+    ----------
+    txt : str
+        The text to generate audio for
+    voice : str
+        The voice to use when generating the audio
+    speed : float
+        The speed of the generated audio
+
+    Returns
+    -------
+    str
+        The path to the generated audio file
+    """
     openai.api_key = api_key
     speech_file_path = "speech.mp3"
     response = openai.audio.speech.create(
@@ -148,7 +185,6 @@ def key_points_extraction(transcription):
     )
     return response.choices[0].message.content
 
-
 # Action item extraction
 @st.cache_data(show_spinner=False)
 def action_item_extraction(transcription):
@@ -189,6 +225,7 @@ def sentiment_analysis(transcription):
     )
     return response.choices[0].message.content
 
+# Meeting minutes
 @st.cache_data(show_spinner=False)
 def meeting_minutes(transcription, options):
     minutes = {
