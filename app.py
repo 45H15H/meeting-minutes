@@ -6,7 +6,7 @@ st.set_page_config(
     page_title="Ex-stream-ly Cool App",
     page_icon="🧊",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("## :gray[Meeting Minutes Generator]")
@@ -25,7 +25,7 @@ else:
 
 transcribe, generate, minutes = st.tabs([":blue[Transcribe]", ":blue[Generate]", "Meeting Minutes"], )
 
-# @st.cache_data
+@st.cache_data(show_spinner=False)
 def transcribe_audio(audio_file, language):
     openai.api_key = api_key
     transcription = openai.audio.transcriptions.create(
@@ -42,12 +42,6 @@ with transcribe:
 
     uploaded_audio = st.file_uploader("Choose a audio file", key='audio_input', disabled=not api_key, type=['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'])
     st.text("Select language")
-    col1, col2 = st.columns(2)
-    with col1:
-        language = st.selectbox("Select language", ("English", "Spanish", "French", "German", "Italian", "Portuguese"), index=0, disabled=not uploaded_audio, placeholder="The language to transcribe the audio into", label_visibility='collapsed')
-    with col2:
-        t_button = st.button("Transcribe", type="primary", disabled=not uploaded_audio)
-    st.divider()
     # language in ISO-639-1 format to improve the accuracy and latency of the transcription
     language_dict = {
         "English": "en",
@@ -57,6 +51,13 @@ with transcribe:
         "Italian": "it",
         "Portuguese": "pt"
     }
+    col1, col2 = st.columns(2)
+    with col1:
+        language = st.selectbox("Select language", ("English", "Spanish", "French", "German", "Italian", "Portuguese"), index=0, disabled=not uploaded_audio, placeholder="The language to transcribe the audio into", label_visibility='collapsed')
+    with col2:
+        t_button = st.button("Transcribe", type="primary", disabled=not uploaded_audio)
+    st.divider()
+
     if uploaded_audio and t_button:
         progress_bar = st.progress(0, "Operation in progress. Please wait...")
         result = transcribe_audio(uploaded_audio, language_dict[language])
@@ -66,7 +67,7 @@ with transcribe:
     if r:
         st.download_button("Download text", data = result, mime = 'text/plain', file_name="transcript.txt")
         
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def generate_audio(txt, voice, speed):
     openai.api_key = api_key
     speech_file_path = "speech.mp3"
@@ -105,7 +106,7 @@ with generate:
 
 
 # Summary extraction
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def abstract_summary_extraction(transcription):
     openai.api_key = api_key
     response = openai.chat.completions.create(
@@ -125,7 +126,7 @@ def abstract_summary_extraction(transcription):
     return response.choices[0].message.content
 
 # Key points extraction
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def key_points_extraction(transcription):
     openai.api_key = api_key
     response = openai.chat.completions.create(
@@ -146,7 +147,7 @@ def key_points_extraction(transcription):
 
 
 # Action item extraction
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def action_item_extraction(transcription):
     openai.api_key = api_key
     response = openai.chat.completions.create(
@@ -166,7 +167,7 @@ def action_item_extraction(transcription):
     return response.choices[0].message.content
 
 # Sentiment analysis
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def sentiment_analysis(transcription):
     openai.api_key = api_key
     response = openai.chat.completions.create(
@@ -185,7 +186,7 @@ def sentiment_analysis(transcription):
     )
     return response.choices[0].message.content
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def meeting_minutes(transcription, options):
     minutes = {
         'abstract_summary': None,
@@ -237,7 +238,7 @@ with minutes:
     with col2:
         g_button = st.button("Generate", type="primary", disabled=not uploaded_audio, key='g_2')
     st.divider()
-    if uploaded_audio and t_button:
+    if uploaded_audio and g_button:
         with st.spinner("Operation in progress. Please wait..."):
             # Transcribe in English
             result = transcribe_audio(uploaded_audio, 'en')
