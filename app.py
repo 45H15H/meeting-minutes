@@ -3,8 +3,8 @@ import openai
 from docx import Document
 
 st.set_page_config(
-    page_title="Ex-stream-ly Cool App",
-    page_icon="🧊",
+    page_title="Meeting Minutes Generator",
+    page_icon="📝",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -65,8 +65,10 @@ with transcribe:
         progress_bar.progress(100)
         st.text_area(label="", value=result, label_visibility='collapsed', key="t_1")
     if r:
-        st.download_button("Download text", data = result, mime = 'text/plain', file_name="transcript.txt")
-        
+        with open('transcript.txt', 'w') as f:
+            f.write(r)
+            st.download_button("Download transcript", data = r, mime="text/plain", file_name="transcript.txt")
+
 @st.cache_data(show_spinner=False)
 def generate_audio(txt, voice, speed):
     openai.api_key = api_key
@@ -102,8 +104,9 @@ with generate:
         progress_bar.progress(100)
         st.audio(audio_file_path, format="audio/mp3")
     if a:
-        st.download_button("Download audio", data = audio_file_path, mime="audio/mp3", file_name="speech.mp3")
-
+        with open('speech.mp3', 'rb') as f:
+            audio_content = f.read()
+        st.download_button("Download audio", data = audio_content, mime="audio/mp3", file_name="speech.mp3")
 
 # Summary extraction
 @st.cache_data(show_spinner=False)
@@ -204,7 +207,6 @@ def meeting_minutes(transcription, options):
     
     return minutes
     
-
 # Exporting meeting minutes
 def save_as_docx(minutes, filename):
     doc = Document()
@@ -217,12 +219,11 @@ def save_as_docx(minutes, filename):
         doc.add_paragraph()
     doc.save(filename)
 
-
 global m
 m = {}
 with minutes:
     st.subheader("Generate meeting minutes")
-    uploaded_audio = st.file_uploader("Choose a audio file", key='audio_input_2', disabled=not api_key)
+    uploaded_audio = st.file_uploader("Choose a audio file", key='audio_input_2', disabled=not api_key, type=['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'])
     st.text("Analyze")
     col1, col2 = st.columns(2)
     with col1:
