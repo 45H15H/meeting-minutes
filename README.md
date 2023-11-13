@@ -1,6 +1,6 @@
 # Meeting Minutes Generator
 
-Meeting Minutes Generator is a web application that uses OpenAI API models automatically generate meeting minutes from audio recordings.
+Meeting Minutes Generator is a web application that uses OpenAI API models to automatically generate meeting minutes from audio recordings.
 
 ## Demo
 
@@ -28,6 +28,10 @@ streamlit run app.py
 - Generate meeting minutes from audio recordings
 - Generate audio from text with different voices and speeds
 - Generate transcripts from audio recordings in different languages
+- Dowlnoad the generated files
+
+## Note
+In meeting minutes the analysis features are limited to two because of the rate limit on gpt-3.5-turbo model. In free tier it allows only 3 requests per minute. So, I have used two requests for meeting minutes and one for transcription. If you want to use all the features, you can upgrade to paid tier.
 
 ## Contact
 
