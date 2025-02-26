@@ -1,4 +1,4 @@
-# Meeting Minutes Generator
+# MinuteGen
 
 Meeting Minutes Generator is a web application that uses OpenAI API models to automatically generate meeting minutes from audio recordings.
 
